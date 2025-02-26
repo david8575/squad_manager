@@ -76,12 +76,13 @@ class HomeScreen extends StatelessWidget{
       },
       child: Card(
         elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40),
+            Icon(icon, size: 50, color: Colors.green),
             SizedBox(height: 10),
-            Text(label),
+            Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
