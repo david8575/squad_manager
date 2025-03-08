@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'player_registration_screen.dart';
 import 'player_list_screen.dart';
+import 'formation_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -50,6 +51,19 @@ class HomeScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const PlayerListScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sports_soccer),
+              title: const Text('포메이션 배치'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FormationScreen(),
                   ),
                 );
               },
