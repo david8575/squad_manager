@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'dart:convert';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
+import 'dart:math';
 import '../models/player.dart';
 import '../models/player_position.dart';
+
 
 class FormationScreen extends StatefulWidget {
   const FormationScreen({super.key});
@@ -14,6 +20,7 @@ class FormationScreen extends StatefulWidget {
 class _FormationScreenState extends State<FormationScreen> {
   List<Player> availablePlayers = [];
   List<PlayerPosition> placedPlayers = [];
+  final GlobalKey _globalKey = GlobalKey();
   
   @override
   void initState() {
@@ -36,7 +43,8 @@ class _FormationScreenState extends State<FormationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('포메이션 배치'),
+        title: const Text('포메이션'),
+        backgroundColor: Colors.blue,
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -49,94 +57,97 @@ class _FormationScreenState extends State<FormationScreen> {
           // 축구장 영역
           Expanded(
             flex: 5,
-            child: DragTarget<Player>(
-              builder: (context, candidateData, rejectedData) {
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // 축구장 이미지
-                    Center(
-                      child: FractionallySizedBox(
-                        widthFactor: 0.95,
-                        heightFactor: 0.95,
-                        child: Image.asset(
-                          'assets/images/field.png',
-                          fit: BoxFit.fill,
+            child: RepaintBoundary(
+              key: _globalKey,
+              child: DragTarget<Player>(
+                builder: (context, candidateData, rejectedData) {
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // 축구장 배경
+                      Center(
+                        child: FractionallySizedBox(
+                          widthFactor: 0.95,
+                          heightFactor: 0.95,
+                          child: CustomPaint(
+                            painter: SoccerFieldPainter(),
+                            size: Size.infinite,
+                          ),
                         ),
                       ),
-                    ),
-                    // 배치된 선수들
-                    ...placedPlayers.map((playerPosition) {
-                      return Positioned(
-                        left: playerPosition.position.dx,
-                        top: playerPosition.position.dy,
-                        child: GestureDetector(
-                          onPanUpdate: (details) {
-                            setState(() {
-                              final index = placedPlayers.indexOf(playerPosition);
-                              placedPlayers[index] = PlayerPosition(
-                                player: playerPosition.player,
-                                position: Offset(
-                                  playerPosition.position.dx + details.delta.dx,
-                                  playerPosition.position.dy + details.delta.dy,
+                      // 배치된 선수들
+                      ...placedPlayers.map((playerPosition) {
+                        return Positioned(
+                          left: playerPosition.position.dx,
+                          top: playerPosition.position.dy,
+                          child: GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() {
+                                final index = placedPlayers.indexOf(playerPosition);
+                                placedPlayers[index] = PlayerPosition(
+                                  player: playerPosition.player,
+                                  position: Offset(
+                                    playerPosition.position.dx + details.delta.dx,
+                                    playerPosition.position.dy + details.delta.dy,
+                                  ),
+                                );
+                              });
+                            },
+                            onLongPress: () {
+                              setState(() {
+                                availablePlayers.add(playerPosition.player);
+                                placedPlayers.remove(playerPosition);
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('선수가 목록으로 이동되었습니다'),
+                                  duration: Duration(seconds: 1),
                                 ),
                               );
-                            });
-                          },
-                          onLongPress: () {
-                            setState(() {
-                              availablePlayers.add(playerPosition.player);
-                              placedPlayers.remove(playerPosition);
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('선수가 목록으로 이동되었습니다'),
-                                duration: Duration(seconds: 1),
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 5,
-                                  offset: const Offset(0, 2),
+                              child: Text(
+                                '${playerPosition.player.number}.${playerPosition.player.name}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              '${playerPosition.player.number}.${playerPosition.player.name}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
-              onAcceptWithDetails: (details) {
-                final player = details.data;
-                final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                final localPosition = renderBox.globalToLocal(details.offset);
-                
-                setState(() {
-                  placedPlayers.add(
-                    PlayerPosition(
-                      player: player,
-                      position: localPosition,
-                    ),
+                        );
+                      }),
+                    ],
                   );
-                  availablePlayers.remove(player);
-                });
-              },
+                },
+                onAcceptWithDetails: (details) {
+                  final player = details.data;
+                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final localPosition = renderBox.globalToLocal(details.offset);
+                  
+                  setState(() {
+                    placedPlayers.add(
+                      PlayerPosition(
+                        player: player,
+                        position: localPosition,
+                      ),
+                    );
+                    availablePlayers.remove(player);
+                  });
+                },
+              ),
             ),
           ),
           // 선수 목록 패널
@@ -205,10 +216,30 @@ class _FormationScreenState extends State<FormationScreen> {
     );
     await prefs.setString('formation', formationJson);
     
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('포메이션이 저장되었습니다')),
-      );
+    try {
+      RenderRepaintBoundary boundary = _globalKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage();
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData != null) {
+        final result = await ImageGallerySaver.saveImage(
+          byteData.buffer.asUint8List(),
+          quality: 100,
+          name: "formation_${DateTime.now().millisecondsSinceEpoch}"
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['isSuccess'] ? '포메이션이 저장되었습니다' : '저장에 실패했습니다')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미지 저장 중 오류가 발생했습니다')),
+        );
+      }
     }
   }
 }
@@ -282,4 +313,110 @@ class PlayerCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class SoccerFieldPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 잔디 배경 그리기
+    final backgroundPaint = Paint()
+      ..color = const Color(0xFF4CAF50)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
+
+    // 잔디 패턴 그리기 (가로 방향)
+    final stripePaint = Paint()
+      ..color = const Color(0xFF388E3C)
+      ..style = PaintingStyle.fill;
+    
+    final stripeCount = 10;
+    final stripeHeight = size.height / stripeCount;
+    for (var i = 0; i < stripeCount; i += 2) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, i * stripeHeight, size.width, stripeHeight),
+        stripePaint,
+      );
+    }
+
+    // 경기장 라인 그리기
+    final linePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    // 외곽선
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), linePaint);
+
+    // 중앙선 (가로)
+    canvas.drawLine(
+      Offset(0, size.height / 2),
+      Offset(size.width, size.height / 2),
+      linePaint,
+    );
+
+    // 센터 서클
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      size.height / 10,
+      linePaint,
+    );
+
+    // 센터 점
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      2,
+      Paint()..color = Colors.white,
+    );
+
+    // 페널티 박스 (위쪽)
+    final penaltyBoxWidth = size.width * 0.4;
+    final penaltyBoxHeight = size.height * 0.2;
+    canvas.drawRect(
+      Rect.fromLTWH(
+        (size.width - penaltyBoxWidth) / 2,
+        0,
+        penaltyBoxWidth,
+        penaltyBoxHeight,
+      ),
+      linePaint,
+    );
+
+    // 골 박스 (위쪽)
+    final goalBoxWidth = size.width * 0.2;
+    final goalBoxHeight = size.height * 0.08;
+    canvas.drawRect(
+      Rect.fromLTWH(
+        (size.width - goalBoxWidth) / 2,
+        0,
+        goalBoxWidth,
+        goalBoxHeight,
+      ),
+      linePaint,
+    );
+
+    // 페널티 박스 (아래쪽)
+    canvas.drawRect(
+      Rect.fromLTWH(
+        (size.width - penaltyBoxWidth) / 2,
+        size.height - penaltyBoxHeight,
+        penaltyBoxWidth,
+        penaltyBoxHeight,
+      ),
+      linePaint,
+    );
+
+    // 골 박스 (아래쪽)
+    canvas.drawRect(
+      Rect.fromLTWH(
+        (size.width - goalBoxWidth) / 2,
+        size.height - goalBoxHeight,
+        goalBoxWidth,
+        goalBoxHeight,
+      ),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
