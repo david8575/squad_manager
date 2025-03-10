@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/player.dart';
 
+// 위젯 선언
 class PlayerRegistrationScreen extends StatefulWidget {
   const PlayerRegistrationScreen({super.key});
 
@@ -11,13 +12,28 @@ class PlayerRegistrationScreen extends StatefulWidget {
 }
 
 class _PlayerRegistrationScreenState extends State<PlayerRegistrationScreen> {
+  // 폼, 입력키 제어를 위한 컨트롤러
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
+  final _ageController = TextEditingController(); 
   final _numberController = TextEditingController();
   final _mainPositionController = TextEditingController();
   final _subPositionController = TextEditingController();
 
+  final List<String> positions = [
+  'GK',
+  'LB', 'CB', 'RB',
+  'LWB', 'CDM', 'RWB',
+  'LM', 'CM', 'RM',
+  'CAM',
+  'LW', 'ST', 'RW',
+  'CF'
+];
+
+  String? selectedMainPosition;
+  String? selectedSubPosition;
+
+  // 메모리 누수 방지
   @override
   void dispose() {
     _nameController.dispose();
@@ -28,6 +44,7 @@ class _PlayerRegistrationScreenState extends State<PlayerRegistrationScreen> {
     super.dispose();
   }
 
+  // 선숫 정보 저장
   Future<void> _savePlayers(Player newPlayer) async {
     final prefs = await SharedPreferences.getInstance();
     final String? existingPlayersJson = prefs.getString('players');
@@ -48,6 +65,7 @@ class _PlayerRegistrationScreenState extends State<PlayerRegistrationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('선수 등록'),
+        backgroundColor: Colors.blue,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -99,29 +117,53 @@ class _PlayerRegistrationScreenState extends State<PlayerRegistrationScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _mainPositionController,
+              DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: '주 포지션',
                   border: OutlineInputBorder(),
                 ),
+                value: selectedMainPosition,
+                items: positions.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedMainPosition = newValue;
+                    _mainPositionController.text = newValue ?? '';
+                  });
+                },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '주 포지션을 입력해주세요';
+                    return '주 포지션을 선택해주세요';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _subPositionController,
+              DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: '부 포지션',
                   border: OutlineInputBorder(),
                 ),
+                value: selectedSubPosition,
+                items: positions.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedSubPosition = newValue;
+                    _subPositionController.text = newValue ?? '';
+                  });
+                },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '부 포지션을 입력해주세요';
+                    return '부 포지션을 선택해주세요';
                   }
                   return null;
                 },
